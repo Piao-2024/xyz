@@ -9,6 +9,7 @@ import smtplib
 import sys
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from datetime import datetime
 
 
@@ -95,6 +96,7 @@ def send_email(subject: str, new_eps_raw: str) -> bool:
     qq_email = config.get("QQ_EMAIL", "")
     smtp_password = config.get("QQ_SMTP_PASSWORD", "")
     to_email = config.get("TO_EMAIL", qq_email)
+    from_name = config.get("FROM_NAME", "今儿又有好看的啦～")
 
     if not qq_email or not smtp_password:
         print("ERROR: .email_config 中缺少 QQ_EMAIL 或 QQ_SMTP_PASSWORD", file=sys.stderr)
@@ -102,7 +104,7 @@ def send_email(subject: str, new_eps_raw: str) -> bool:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = qq_email
+    msg["From"] = formataddr((from_name, qq_email))
     msg["To"] = to_email
 
     html_content = build_email(subject, new_eps_raw)
