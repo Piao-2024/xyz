@@ -98,6 +98,9 @@ def send_email(subject: str, new_eps_raw: str) -> bool:
     to_email = config.get("TO_EMAIL", qq_email)
     from_name = config.get("FROM_NAME", "今儿又有好看的啦～")
 
+    # 支持多个收件人，用逗号分隔
+    recipients = [addr.strip() for addr in to_email.split(",") if addr.strip()]
+
     if not qq_email or not smtp_password:
         print("ERROR: .email_config 中缺少 QQ_EMAIL 或 QQ_SMTP_PASSWORD", file=sys.stderr)
         return False
@@ -105,7 +108,7 @@ def send_email(subject: str, new_eps_raw: str) -> bool:
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = formataddr((from_name, qq_email))
-    msg["To"] = to_email
+    msg["To"] = ", ".join(recipients)
 
     html_content = build_email(subject, new_eps_raw)
     msg.attach(MIMEText(html_content, "html", "utf-8"))
@@ -114,9 +117,9 @@ def send_email(subject: str, new_eps_raw: str) -> bool:
         server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
         server.starttls()
         server.login(qq_email, smtp_password)
-        server.sendmail(qq_email, [to_email], msg.as_string())
+        server.sendmail(qq_email, recipients, msg.as_string())
         server.quit()
-        print("邮件发送成功")
+        print(f"邮件发送成功 (收件人: {', '.join(recipients)})")
         return True
     except smtplib.SMTPAuthenticationError as e:
         print(f"SMTP 认证失败，请检查邮箱地址和授权码: {e}", file=sys.stderr)
