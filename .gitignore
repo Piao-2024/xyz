@@ -2,3 +2,6 @@
 .vscode
 build
 .DS_Store
+scripts/.podcast_state
+scripts/.email_config
+scripts/*.log
