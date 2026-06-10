@@ -15,6 +15,7 @@ func RegisterRouters(engine *gin.Engine) {
 		server.ServeHTTP(context.Writer, context.Request)
 	})
 	engine.GET("/ping", handlers.Pong)
+	engine.GET("/items", utils.CheckAccessToken(), handlers.Items)                                                        // 统一数据源协议：小宇宙更新列表
 	engine.POST("/sendCode", handlers.SendCode)                                                                           // 发送验证码
 	engine.POST("/login", handlers.Login)                                                                                 // 验证码登录
 	engine.POST("/subscription", utils.CheckAccessToken(), handlers.Subscription)                                         // 订阅列表

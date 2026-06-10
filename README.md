@@ -42,6 +42,41 @@ $ go run . -d
 >
 > 文档地址：http://localhost:{{port}}/docs
 
+### 统一数据源协议
+
+本仓库只提供小宇宙数据源 API，不包含 B站、推送、调度或去重逻辑。
+
+```shell
+curl "http://localhost:23020/items?limit=10" \
+  -H "x-jike-access-token: $XIAOYUZHOU_ACCESS_TOKEN"
+```
+
+也可以指定单个播客：
+
+```shell
+curl "http://localhost:23020/items?pid=61791d921989541784257779&limit=10" \
+  -H "x-jike-access-token: $XIAOYUZHOU_ACCESS_TOKEN"
+```
+
+返回格式：
+
+```json
+{
+  "source": "xiaoyuzhou",
+  "source_id": "subscriptions",
+  "items": [
+    {
+      "id": "episode_id",
+      "title": "单集标题",
+      "url": "https://www.xiaoyuzhoufm.com/episode/episode_id",
+      "author": "播客名",
+      "published_at": "2026-06-10T12:00:00+08:00",
+      "cover": "https://..."
+    }
+  ]
+}
+```
+
 > 可在 [Releases](https://github.com/ultrazg/xyz/releases) 下载编译好的可执行文件
 
 ## 作为模块
