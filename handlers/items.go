@@ -30,9 +30,7 @@ type SourceItemsResponse struct {
 }
 
 type xiaoyuzhouAPIResponse struct {
-	Data struct {
-		Data []xiaoyuzhouEpisode `json:"data"`
-	} `json:"data"`
+	Data []xiaoyuzhouEpisode `json:"data"`
 }
 
 type xiaoyuzhouEpisode struct {
@@ -67,7 +65,7 @@ var Items = func(ctx *gin.Context) {
 		episodes, err = requestXiaoyuzhouEpisodes(token, pid, limit)
 		sourceID = pid
 	} else {
-		episodes, err = requestXiaoyuzhouInbox(token, limit)
+		episodes, err = requestXiaoyuzhouViaSubscriptions(token, limit)
 		sourceID = "subscriptions"
 	}
 
@@ -132,6 +130,59 @@ func requestXiaoyuzhouInbox(token string, limit int) ([]xiaoyuzhouEpisode, error
 	return requestXiaoyuzhouEpisodeList("/v1/inbox/list", payload, token)
 }
 
+type xiaoyuzhouSubscription struct {
+	PID   string `json:"pid"`
+	Title string `json:"title"`
+}
+
+type xiaoyuzhouSubscriptionListResponse struct {
+	Data []xiaoyuzhouSubscription `json:"data"`
+}
+
+func requestXiaoyuzhouViaSubscriptions(token string, limit int) ([]xiaoyuzhouEpisode, error) {
+	// Get subscription list first
+	subPayload := map[string]any{
+		"limit":     "50",
+		"sortOrder": "desc",
+		"sortBy":    "subscribedAt",
+	}
+	resp, code, err := utils.Request(constant.BaseUrl+"/v1/subscription/list", http.MethodPost, subPayload, xiaoyuzhouHeaders(token))
+	if err != nil {
+		return nil, fmt.Errorf("subscription list failed: code=%d err=%w", code, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read subscription list: %w", err)
+	}
+
+	var subList xiaoyuzhouSubscriptionListResponse
+	if err := json.Unmarshal(body, &subList); err != nil {
+		return nil, fmt.Errorf("parse subscription list: %w", err)
+	}
+
+	// Get latest episodes from each subscription (up to 10 podcasts, 2 episodes each)
+	var allEpisodes []xiaoyuzhouEpisode
+	maxPods := 10
+	if len(subList.Data) < maxPods {
+		maxPods = len(subList.Data)
+	}
+	for i := 0; i < maxPods; i++ {
+		episodes, err := requestXiaoyuzhouEpisodes(token, subList.Data[i].PID, 2)
+		if err != nil {
+			log.Printf("failed to get episodes for pid=%s: %v", subList.Data[i].PID, err)
+			continue
+		}
+		allEpisodes = append(allEpisodes, episodes...)
+	}
+
+	if len(allEpisodes) > limit {
+		allEpisodes = allEpisodes[:limit]
+	}
+	return allEpisodes, nil
+}
+
 func requestXiaoyuzhouEpisodes(token, pid string, limit int) ([]xiaoyuzhouEpisode, error) {
 	payload := map[string]any{
 		"limit": strconv.Itoa(limit),
@@ -158,7 +209,7 @@ func requestXiaoyuzhouEpisodeList(path string, payload map[string]any, token str
 		return nil, fmt.Errorf("parse %s response: %w", path, err)
 	}
 
-	return parsed.Data.Data, nil
+	return parsed.Data, nil
 }
 
 func xiaoyuzhouHeaders(token string) map[string]string {
